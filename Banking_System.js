@@ -44,9 +44,7 @@ const validationHelpers = {
   },
 
   validEmail(value) {
-    const regEx = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-
-    return regEx.test(value);
+    return typeof value == 'string';
   },
 
   validTransactionType(value) {
@@ -171,7 +169,7 @@ class JointAccount extends BankAccount {
 
   set owners(value) {
     if (value.length == 0) {
-      throw new AuthorizationError("Error");
+      throw new AuthorizationError("must be write owners names");
     }
 
     this.#owners = [...value];
