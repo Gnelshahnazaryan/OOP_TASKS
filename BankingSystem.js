@@ -27,35 +27,39 @@ class ValidationError extends Error {
 }
 
 const validationHelpers = {
-  valideAccountNumber(value) {
-    return typeof value === "string" && value.length >= 10;
+  validateAccountNumber(value) {
+    return typeof value === "string" && value.length === 10;
   },
 
   validateType(type) {
-    return typeof type == "string" && (type == "individual" || type == "joint");
-  },
-
-  non_negative(value) {
-    return typeof value === "number" && value >= 0;
-  },
-
-  validName(value) {
-    return value.length;
-  },
-
-  validEmail(value) {
-    return typeof value == 'string';
-  },
-
-  validTransactionType(value) {
     return (
-      typeof value == "string" &&
-      (value == "deposit" || value == "withdraw" || value == "transfer")
+      typeof type === "string" && (type === "individual" || type === "joint")
     );
   },
 
-  validAmount(value) {
-    return typeof value === "number" && !Number.isNaN(value);
+  isNonNegative(value) {
+    return typeof value === "number" && value >= 0;
+  },
+
+  validateName(value) {
+    return value.length;
+  },
+
+  validateEmail(value) {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
+    return emailRegex.test(value);
+  },
+
+  validateTransactionType(value) {
+    return (
+      typeof value == "string" &&
+      (value === "deposit" || value === "withdraw" || value === "transfer")
+    );
+  },
+
+  validateAmount(value) {
+    typeof value === "number" && Number.isFinite(value) && value > 0;
   },
 };
 
@@ -65,15 +69,11 @@ class BankAccount {
 
   constructor(accountNumber, type, balance = 0) {
     if (new.target == BankAccount) {
-      throw new TypeError("Abstract class can not instatiate");
+      throw new TypeError("Abstract class can not have instances");
     }
 
-    if (!validationHelpers.valideAccountNumber(accountNumber)) {
-      throw new ValidationError("validation error");
-    }
-
-    if (!validationHelpers.validateType(type)) {
-      throw new ValidationError("type must be individual or joint");
+    if (!validationHelpers.validateAccountNumber(accountNumber)) {
+      throw new ValidationError("Account number must exactly 10 digits");
     }
 
     this.accountNumber = accountNumber;
@@ -82,7 +82,63 @@ class BankAccount {
   }
 
   deposit(amount) {
-    if (!validationHelpers.validAmount(amount)) {
+    throw new TypeError("Abstract method must be implement by subclass");
+  }
+
+  withdraw(amount) {
+    throw new TypeError("Abstract method must be implement by subclass");
+  }
+
+  getAllTransactions() {
+    return [...this.#transactions];
+  }
+
+  getTransactionSummary(limit = 10) {
+    if (this.#transactions.length < limit) {
+      this.getAllTransactions();
+    }
+
+    return this.#transactions.slice(-limit);
+  }
+
+  addTransaction(transaction) {
+    if (!(transaction instanceof Transaction)) {
+      throw new ValidationError(
+        "transaction must be instance of Transaction class"
+      );
+    }
+
+    this.#transactions.push(transaction);
+  }
+
+  set balance(value) {
+    if (!validationHelpers.isNonNegative(value)) {
+      throw new ValidationError("Balance must be positive number");
+    }
+
+    this.#balance = value;
+  }
+
+  getBalance() {
+    this.#balance;
+  }
+}
+
+class JointAccount extends BankAccount {
+  #owners = [];
+
+  constructor(accountNumber, balance, ...owners) {
+    super(accountNumber, "joint", balance);
+
+    this.#owners = owners;
+  }
+
+  get owners() {
+    return this.#owners;
+  }
+
+  deposit(amount) {
+    if (!validationHelpers.validateAmount(amount)) {
       throw new ValidationError("Amount must be number");
     }
 
@@ -94,12 +150,12 @@ class BankAccount {
   }
 
   withdraw(amount) {
-    if (!validationHelpers.validAmount(amount)) {
+    if (!validationHelpers.validateAmount(amount)) {
       throw new ValidationError("Amount must be number");
     }
 
     const date = Date.now().toString();
-    if (this.#balance < amount) {
+    if (this.getBalance() < amount) {
       throw new InsufficientFundsError("Insufficient Funds");
     }
     this.balance -= amount;
@@ -108,83 +164,12 @@ class BankAccount {
     );
   }
 
-  getAllTransactions() {
-    return [...this.#transactions];
-  }
-
-  getTransactionSummary(limit = 10) {
-    // let i;
-    // let res = [];
-    // let index = 0;
-
-    // if(this.#transactions.length < 10){
-    // 	 i = 0;
-    // }else{
-    // 	i = this.#transactions.length - limit;
-    // }
-
-    // for(; i  < this.#transactions.length; ++i){
-    // 	res[index] = this.#transactions[i];
-    // 	++index;
-    // }
-
-    // return res;
-
-    if (this.#transactions.length < limit) {
-      this.getAllTransactions();
-    }
-
-    return this.#transactions.slice(-limit);
-  }
-
-  addTransaction(transaction) {
-    if (!(transaction instanceof Transaction)) {
-      throw new ValidationError("Invalid trnasaction");
-    }
-
-    this.#transactions.push(transaction);
-  }
-
-  set balance(value) {
-    if (!validationHelpers.non_negative(value)) {
-      throw new ValidationError("balance must be positive");
-    }
-
-    this.#balance = value;
-  }
-
-  get balance() {
-    return this.#balance;
-  }
-}
-
-class JointAccount extends BankAccount {
-  #owners = [];
-
-  constructor(accountNumber, type, balance, ...owners) {
-    super(accountNumber, type, balance);
-
-    this.#owners = owners;
-  }
-
-  set owners(value) {
-    if (value.length == 0) {
-      throw new AuthorizationError("must be write owners names");
-    }
-
-    this.#owners = [...value];
-  }
-
-  get owners() {
-    return this.#owners;
-  }
-
   transferFunds(targetAccount, amount, actor) {
     if (!(targetAccount instanceof BankAccount)) {
       throw new ValidationError("Target account is not instance of Bank");
     }
 
-    if (!validationHelpers.validAmount(amount)) {
+    if (!validationHelpers.validateAmount(amount)) {
       throw new ValidationError("Amount must be number");
     }
 
@@ -193,7 +178,7 @@ class JointAccount extends BankAccount {
     }
 
     for (const person of this.owners) {
-      if (actor == person) {
+      if (actor === person) {
         const date = Date.now().toString();
         this.balance -= amount;
         targetAccount.deposit(amount);
@@ -216,8 +201,8 @@ class JointAccount extends BankAccount {
 }
 
 class IndividualAccount extends BankAccount {
-  constructor(accountNumber, type, balance) {
-    super(accountNumber, type, balance);
+  constructor(accountNumber, balance) {
+    super(accountNumber, "individual", balance);
   }
 
   transferFunds(targetAccount, amount, actor) {
@@ -225,12 +210,12 @@ class IndividualAccount extends BankAccount {
       throw new ValidationError("Target account is not instance of Bank");
     }
 
-    if (!validationHelpers.validAmount(amount)) {
-      throw new ValidationError("Amount must be number");
+    if (!validationHelpers.validateAmount(amount)) {
+      throw new ValidationError("Amount must be positive number");
     }
 
     if (this.balance < amount) {
-      throw new InsufficientFundsError("InsufficientFundsError");
+      throw new InsufficientFundsError("Insufficient Funds");
     }
 
     const date = Date.now().toString();
@@ -256,8 +241,8 @@ class Customer {
 
     Object.defineProperty(this, "name", {
       set(value) {
-        if (!validationHelpers.validName(value)) {
-          throw new TypeError("name can't be empty");
+        if (!validationHelpers.validateName(value)) {
+          throw new TypeError("Name must be non-empty string");
         }
 
         _name = value;
@@ -270,10 +255,8 @@ class Customer {
 
     Object.defineProperty(this, "contactInfo", {
       set(value) {
-        if (!validationHelpers.validEmail(value)) {
-          throw new ValidationError(
-            "contact info must be mail or phone number"
-          );
+        if (!validationHelpers.validateEmail(value)) {
+          throw new ValidationError("contact info must be email");
         }
 
         _contactInfo = value;
@@ -298,10 +281,9 @@ class Customer {
   }
 
   viewTransactionHistory(accountNumber) {
-    if (!this.accounts.includes(accountNumber)) {
-      throw new AuthorizationError("Account not found");
-    }
-    return this.accounts[accountNumber].getAllTransactions();
+    const acc = this.accounts.find((a) => a.accountNumber === accountNumber);
+    if (!acc) throw new ValidationError("Account not found");
+    return acc.getAllTransactions();
   }
 }
 
@@ -320,7 +302,7 @@ class Transaction {
 
     Object.defineProperty(this, "transactionType", {
       set(value) {
-        if (!validationHelpers.validTransactionType(value)) {
+        if (!validationHelpers.validateTransactionType(value)) {
           throw new ValidationError(
             "Transaction Type must be deposit,withdraw or transfer"
           );
@@ -335,8 +317,10 @@ class Transaction {
 
     Object.defineProperty(this, "amount", {
       set(value) {
-        if (!validationHelpers.non_negative(value)) {
-          throw new ValidationError("Transaction amount must be positive");
+        if (!validationHelpers.isNonNegative(value)) {
+          throw new ValidationError(
+            "Transaction amount must be positive number"
+          );
         }
         _amount = value;
       },
@@ -348,8 +332,10 @@ class Transaction {
 
     Object.defineProperty(this, "accountNumber", {
       set(value) {
-        if (!validationHelpers.valideAccountNumber(value)) {
-          throw new ValidationError("validation error");
+        if (!validationHelpers.validateAccountNumber(value)) {
+          throw new ValidationError(
+            "Account number must be string exactly 10 digits"
+          );
         }
 
         _account = value;
