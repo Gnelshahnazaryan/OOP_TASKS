@@ -31,12 +31,6 @@ const validationHelpers = {
     return typeof value === "string" && value.length === 10;
   },
 
-  validateType(type) {
-    return (
-      typeof type === "string" && (type === "individual" || type === "joint")
-    );
-  },
-
   isNonNegative(value) {
     return typeof value === "number" && value >= 0;
   },
@@ -47,7 +41,6 @@ const validationHelpers = {
 
   validateEmail(value) {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-
     return emailRegex.test(value);
   },
 
@@ -64,7 +57,7 @@ const validationHelpers = {
 };
 
 class BankAccount {
-  #balance;
+  #balance = 0;
   #transactions = [];
 
   constructor(accountNumber, type, balance = 0) {
