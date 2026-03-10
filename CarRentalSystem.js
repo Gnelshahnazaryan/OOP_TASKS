@@ -132,23 +132,24 @@ class Rental {
       throw new ValidationError("Season must be instance of Season class");
     }
 
-    let changedPrice = this.car.rentalPricePerDay;
+    //OCP violation
 
-    if (season.name === "winter") {
-      changedPrice = changedPrice * (1 + season.percent / 100);
-      console.log("Car price is increasing with 15% because of winter");
-    } else if (season.name === "spring") {
-      changedPrice -= changedPrice * (1 - season.percent / 100);
-      console.log("Car price is lacking with 10% because of spring");
-    } else if (season.name === "summer") {
-      changedPrice = changedPrice * (1 - season.percent / 100);
-      console.log("Car price is lacking with 15% because of summer");
-    } else {
-      changedPrice = changedPrice * (1 + season.percent / 100);
-      console.log("Car price is increasing with 10% because of autumn");
-    }
+    // let changedPrice = this.car.rentalPricePerDay;
+    // if (season.name === "winter") {
+    //   changedPrice = changedPrice * (1 + season.percent / 100);
+    //   console.log("Car price is increasing with 15% because of winter");
+    // } else if (season.name === "spring") {
+    //   changedPrice -= changedPrice * (1 - season.percent / 100);
+    //   console.log("Car price is lacking with 10% because of spring");
+    // } else if (season.name === "summer") {
+    //   changedPrice = changedPrice * (1 - season.percent / 100);
+    //   console.log("Car price is lacking with 15% because of summer");
+    // } else {
+    //   changedPrice = changedPrice * (1 + season.percent / 100);
+    //   console.log("Car price is increasing with 10% because of autumn");
+    // }
 
-    return this.rentalDuration * changedPrice;
+    return this.rentalDuration * season.calculatePrice(price);;
   }
 }
 
@@ -296,4 +297,59 @@ class Season {
     this.name = name;
     this.percent = percent;
   }
+
+  calculatePrice(price){
+    throw new Error("Abstract method");
+  }
+
+}
+
+class Winter extends Season{
+
+    constructor(name,percent){
+        super(name,percent);
+    }
+
+    calculatePrice(price){
+        console.log(`Car price is increasing with ${this.percent}% because of winter`);
+        return price * (1 + this.percent / 100);
+    }
+}
+
+class Spring extends Season{
+
+    constructor(name,percent){
+        super(name,percent);
+    }
+
+    calculatePrice(price){
+        console.log(`Car price is lacking with ${this.percent}% because of spring`);
+        return price * (1 - this.percent / 100);
+    }
+}
+
+class Summer extends Season{
+
+    constructor(name,percent){
+        super(name,percent);
+    }
+
+    calculatePrice(price){
+        console.log(`Car price is lacking with ${this.percent}% because of summer`);
+        return price * (1 - this.percent / 100);
+    }
+}
+
+class Autumn extends Season{
+
+     constructor(name,percent){
+        super(name,percent);
+    }
+
+    calculatePrice(price){
+        console.log(`Car price is increasing with ${this.percent}% because of summer`);
+        return price * (1 + this.percent / 100);
+    }
+
+
 }
